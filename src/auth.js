@@ -4,7 +4,7 @@ class Auth {
 		this.sock = [];
 		this.chan = [];
 		this.authKey = new Key(authComboKeyHex);
-		this.keypair = keypair;
+		this.keypair = (keypair !== undefined) ? keypair : sodium.crypto_box_keypair();
 		this.ready = new Promise((resolve, reject) => {
 			this.lctx = new LIBRECAST.Context();
 			this.lctx.onconnect.then(() => {
@@ -30,13 +30,32 @@ class Auth {
 							resolve();
 						});
 					});
+					this.sock["repl"].listen()
+					.then(() => {
+						console.log("message received on reply channel");
+					});
 				});
 			});
 		});
 	}
 
-	signup(kp, email, password) {
+	send(opcode, packed, flags) {
+		const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+		const clear = sodium.to_string(packed);
+		const ciphertext = sodium.crypto_box_easy(clear, nonce, this.authKey.crypt, this.keypair.privateKey);
+		const outerFields = [ this.keypair.publicKey, nonce, ciphertext ];
+		const data = util.wirePack(opcode, flags, outerFields);
+		this.chan['auth'].send(data);
+	}
+
+	signup(email, password) {
 		console.log("signing up with email " + email);
+		const opcode = 0x1;
+		const flags = 0x7;
+		const replyTo = sodium.to_hex(this.keypair.publicKey);
+		const fields = [ replyTo , "", email, password, "" ];
+		const payload = util.wirePackPre([], fields);
+		this.send(opcode, payload, flags);
 	}
 
 }

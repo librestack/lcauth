@@ -27,7 +27,7 @@ class Auth {
 		this.sock = [];
 		this.chan = [];
 		this.authKey = new Key(authComboKeyHex);
-		this.keypair = keypair;
+		this.keypair = (keypair !== undefined) ? keypair : sodium.crypto_box_keypair();
 		this.ready = new Promise((resolve, reject) => {
 			this.lctx = new LIBRECAST.Context();
 			this.lctx.onconnect.then(() => {
@@ -53,13 +53,35 @@ class Auth {
 							resolve();
 						});
 					});
+					this.sock["repl"].listen()
+					.then(() => {
+						console.log("message received on reply channel");
+						// FIXME FIXME FIXME - working here
+						// do we need to keep state? Callbacks? Or just treat
+						// each type of message separately?
+					});
 				});
 			});
 		});
 	}
 
-	signup(kp, email, password) {
+	send(opcode, packed, flags) {
+		const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+		const clear = sodium.to_string(packed);
+		const ciphertext = sodium.crypto_box_easy(clear, nonce, this.authKey.crypt, this.keypair.privateKey);
+		const outerFields = [ this.keypair.publicKey, nonce, ciphertext ];
+		const data = util.wirePack(opcode, flags, outerFields);
+		this.chan['auth'].send(data);
+	}
+
+	signup(email, password) {
 		console.log("signing up with email " + email);
+		const opcode = 0x1;
+		const flags = 0x7;
+		const replyTo = sodium.to_hex(this.keypair.publicKey);
+		const fields = [ replyTo , "", email, password, "" ];
+		const payload = util.wirePackPre([], fields);
+		this.send(opcode, payload, flags);
 	}
 
 }
@@ -70,28 +92,28 @@ class Key {
 	get combo() {
 		return this.comboKeyHex;
 	}
-	get crypt() {
-		if (this.cryptKey === undefined) {
-			this.cryptKey = this.comboKeyHex.slice(0, sodium.crypto_box_PUBLICKEYBYTES * 2);
-		}
-		return this.cryptKey;
-	}
-	get sign() {
-		if (this.signKey === undefined) {
-			this.signKey = this.comboKeyHex.slice(sodium.crypto_box_PUBLICKEYBYTES * 2);
-		}
-		return this.signKey;
-	}
 	get cryptHex() {
 		if (this.cryptKeyHex === undefined) {
-			this.cryptKeyHex = sodium.from_hex(this.crypt);
+			this.cryptKeyHex = this.comboKeyHex.slice(0, sodium.crypto_box_PUBLICKEYBYTES * 2);
 		}
 		return this.cryptKeyHex;
 	}
 	get signHex() {
 		if (this.signKeyHex === undefined) {
-			this.signKeyHex = sodium.from_hex(this.sign);
+			this.signKeyHex = this.comboKeyHex.slice(sodium.crypto_box_PUBLICKEYBYTES * 2);
 		}
 		return this.signKeyHex;
+	}
+	get crypt() {
+		if (this.cryptKey === undefined) {
+			this.cryptKey = sodium.from_hex(this.cryptHex);
+		}
+		return this.cryptKey;
+	}
+	get sign() {
+		if (this.signKey === undefined) {
+			this.signKey = sodium.from_hex(this.signHex);
+		}
+		return this.signKey;
 	}
 }

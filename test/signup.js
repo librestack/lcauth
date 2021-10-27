@@ -12,7 +12,7 @@ QUnit.module('account signup', function() {
 			const auth = new Auth(kp);
 			auth.ready.then( () => {
 				assert.ok(true, "auth ready");
-				auth.signup(kp, invalidEmail, password);
+				auth.signup(invalidEmail, password);
 				done();
 			});
 			done();
