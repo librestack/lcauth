@@ -9,7 +9,9 @@ QUnit.module('account signup', function() {
 			const localpart = sodium.to_hex(sodium.randombytes_buf(16));
 			const invalidEmail = "@live.librecast.net";
 			const password = sodium.to_hex(sodium.randombytes_buf(16));
-			const auth = new Auth(kp);
+			const auth = new Auth(kp, () => {
+				console.log("auth message received on reply channel");
+			});
 			auth.ready.then( () => {
 				assert.ok(true, "auth ready");
 				auth.signup(invalidEmail, password);

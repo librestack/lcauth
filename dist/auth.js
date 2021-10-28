@@ -22,10 +22,12 @@
 
 const authComboKeyHex = "5c146391d0bf788c19ae63ff5cd64a2b23f2c9835edd8197a93bd1bab12e2a7d3a787c20db2c95e462340cea6e6584f7c5bf1a25b40682fcaa1f45fb40cce1f8";
 class Auth {
-	constructor(keypair) {
+	constructor(keypair, replyCallback) {
 		console.log("auth class constructor");
+		this.replyCallback = replyCallback;
 		this.sock = [];
 		this.chan = [];
+		this.event = [];
 		this.authKey = new Key(authComboKeyHex);
 		this.keypair = (keypair !== undefined) ? keypair : sodium.crypto_box_keypair();
 		this.ready = new Promise((resolve, reject) => {
@@ -53,16 +55,39 @@ class Auth {
 							resolve();
 						});
 					});
-					this.sock["repl"].listen()
-					.then(() => {
+					this.sock["repl"].listen(msg => {
 						console.log("message received on reply channel");
-						// FIXME FIXME FIXME - working here
-						// do we need to keep state? Callbacks? Or just treat
-						// each type of message separately?
+						const decoded = this.decodePacket(msg.payload);
+						this.replyCallback(...decoded);
 					});
 				});
 			});
 		});
+	}
+
+	decodePacket(payload, offset) {
+		const ret = util.wireUnpack(payload);
+		const opcode = ret[0];
+		const flags = ret[1];
+		const fields = ret[2];
+		let key, nonce, ciphertext;
+		[ key, nonce, ciphertext ] = ret[2];
+		if (offset === undefined) { offset = 0; }
+		if (!this.keysEqual(key, this.authKey.crypt)) throw "bad auth key received";
+		const clear = sodium.crypto_box_open_easy(ciphertext, nonce, key, this.keypair.privateKey);
+		console.log("packet decoded");
+		const innerFields = util.wireUnpack7Bit(clear.buffer, offset);
+		return [ opcode, flags, innerFields, clear.buffer ];
+	}
+
+	keysEqual(key1, key2) {
+		const len1 = key1.byteLength;
+		const len2 = key2.byteLength;
+		if (len1 !== len2) return false;
+		for (let i = 0; i < len1; i++) {
+			if (key1[i] !== key2[i]) return false;
+		}
+		return true;
 	}
 
 	send(opcode, packed, flags) {
