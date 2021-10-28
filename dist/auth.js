@@ -99,6 +99,15 @@ class Auth {
 		this.chan['auth'].send(data);
 	}
 
+	setPassword(token, password) {
+		const opcode = 0x4;
+		const flags = 0x0;
+		const replyTo = sodium.to_hex(this.keypair.publicKey);
+		const fields = [ replyTo, token, password ];
+		const payload = util.wirePackPre([], fields);
+		this.send(opcode, payload, flags);
+	}
+
 	signup(email, password) {
 		console.log("signing up with email " + email);
 		const opcode = 0x1;

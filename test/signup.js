@@ -24,4 +24,25 @@ QUnit.module('account signup', function() {
 			done();
 		});
 	});
+	QUnit.test('use bad token', function(assert) {
+		console.log("== TEST: set password - bad token");
+		assert.timeout(2000);
+		const done = assert.async(1);
+		sodium.ready.then(function () {
+			const kp = sodium.crypto_box_keypair();
+			const token = sodium.to_hex(sodium.randombytes_buf(16));
+			const password = sodium.to_hex(sodium.randombytes_buf(16));
+			const auth = new Auth(kp, (opcode, flags, fields, pre) => {
+				const view = new DataView(pre);
+				const responseCode = view.getUint8(0).toString();
+				assert.ok(opcode === 0x4, "opcode=" + opcode);
+				assert.ok(responseCode === "1", "token rejected");
+				done();
+			});
+			auth.ready.then(() => {
+				assert.ok(true, "auth ready");
+				auth.setPassword(token, password);
+			});
+		});
+	});
 });
