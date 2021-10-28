@@ -76,6 +76,15 @@ class Auth {
 		this.chan['auth'].send(data);
 	}
 
+	login(email, password) {
+		const opcode = 0x8;
+		const flags = 0x0;
+		const replyTo = sodium.to_hex(this.keypair.publicKey);
+		const fields = [ replyTo, "", email, password, "service" ];
+		const payload = util.wirePackPre([], fields);
+		this.send(opcode, payload, flags);
+	}
+
 	setPassword(token, password) {
 		const opcode = 0x4;
 		const flags = 0x0;

@@ -45,4 +45,26 @@ QUnit.module('account signup', function() {
 			});
 		});
 	});
+	QUnit.test('bad login', function(assert) {
+		console.log("== TEST: login - bad login");
+		assert.timeout(2000);
+		const done = assert.async(1);
+		sodium.ready.then(function () {
+			const kp = sodium.crypto_box_keypair();
+			const localpart = sodium.to_hex(sodium.randombytes_buf(16));
+			const email = localpart + "@live.librecast.net";
+			const password = sodium.to_hex(sodium.randombytes_buf(16));
+			const auth = new Auth(kp, (opcode, flags, fields, pre) => {
+				const view = new DataView(pre);
+				const responseCode = view.getUint8(0).toString();
+				assert.ok(opcode === 0x8, "opcode=" + opcode);
+				assert.ok(responseCode === "1", "login failed");
+				done();
+			})
+			auth.ready.then(() => {
+				assert.ok(true, "auth ready");
+				auth.login(email, password);
+			});
+		});
+	});
 });
