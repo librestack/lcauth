@@ -132,7 +132,6 @@ lc.Context = class {
 
 	constructor() {
 		console.log("Librecast context constructor");
-		this.tok = 0;
 		this.url = (location.protocol == 'https:') ? "wss://" :  "ws://";
 		this.url += document.location.host + "/";
 		this.callstack = [];
@@ -165,16 +164,16 @@ lc.Context = class {
 	};
 
 	get token() {
-		if (++this.tok >= UINT32_MAX) this.tok = 0;
-		return this.tok;
+		return Math.floor(Math.random() * UINT32_MAX);
 	};
 
-	callback(resolve, reject, timeout) {
+	callback(resolve, reject, timeout, repeat) {
 		const token = this.token;
 		const cb = {};
 		cb.resolve = resolve;
 		cb.reject = reject;
 		cb.created = Date.now();
+		cb.repeat = repeat;
 		this.callstack[token] = cb;
 		console.log("callback created with token = " + token);
 		if (timeout !== lc.NO_TIMEOUT) {
@@ -187,6 +186,16 @@ lc.Context = class {
 		}
 		return token;
 	};
+
+	cancelCallback(token) {
+		console.log("cancelling callback token " + token);
+		if (this.callstack[token] !== undefined) {
+			if (this.callstack[token].timeout !== undefined) {
+				clearTimeout(this.callstack[token].timeout);
+			}
+		}
+		delete this.callstack[token];
+	}
 
 	send(msg) {
 		let buffer, dataview, idx;
@@ -251,14 +260,20 @@ lc.Context = class {
 				cmsg.recv = this.callstack[cmsg.token].updated;
 				cmsg.delay = cmsg.recv - cmsg.sent;
 				console.log("message reponse took " + cmsg.delay + " ms");
+
 				if (this.callstack[cmsg.token].timeout !== undefined) {
 					console.log("clearing callback timer " + cmsg.token);
 					clearTimeout(this.callstack[cmsg.token].timeout);
+					this.callstack[cmsg.token].timeout = undefined;
 				}
 				if (this.callstack[cmsg.token].resolve !== undefined) {
 					this.callstack[cmsg.token].resolve(cmsg);
+					if (this.callstack[cmsg.token] !== undefined) {
+						if (!this.callstack[cmsg.token].repeat) {
+							this.cancelCallback(cmsg.token);
+						}
+					}
 				}
-				delete this.callstack[cmsg.token];
 			}
 		}
 	}
@@ -287,13 +302,15 @@ lc.Socket = class {
 		});
 	};
 
-	op(opcode, data, timeout) {
+	op(opcode, data, timeout, callback) {
 		return new Promise((resolve, reject) => {
 			if (this.lctx.websocket.readyState == lc.WS_OPEN) {
 				const msg = new lc.Message(data);
 				msg.opcode = opcode;
 				msg.id = this.id;
-				msg.token = this.lctx.callback(resolve, reject, timeout);
+				if (callback !== false) {
+					msg.token = this.lctx.callback(resolve, reject, timeout);
+				}
 				this.lctx.send(msg);
 			}
 			else {
@@ -302,13 +319,19 @@ lc.Socket = class {
 		});
 	}
 
+	close() {
+		this.lctx.cancelCallback(this.token);
+		return this.op(lc.OP_SOCKET_CLOSE, undefined, undefined, false);
+	}
+
 	listen(onmessage, onerror) {
 		console.log("listening on socket " + this.id);
 		if (this.lctx.websocket.readyState == lc.WS_OPEN) {
 			const msg = new lc.Message();
 			msg.opcode = lc.OP_SOCKET_LISTEN;
 			msg.id = this.id;
-			msg.token = this.lctx.callback(onmessage, onerror, lc.NO_TIMEOUT);
+			msg.token = this.lctx.callback(onmessage, onerror, lc.NO_TIMEOUT, true);
+			this.token = msg.token;
 			this.lctx.send(msg);
 		}
 		else {
