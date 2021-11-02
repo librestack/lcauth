@@ -72,8 +72,6 @@ class Auth {
 	}
 
 	checkSignature(signed) {
-		console.log("checkSignature");
-		console.log(signed);
 		return sodium.crypto_sign_open(signed, this.authKey.sign);
 	}
 
