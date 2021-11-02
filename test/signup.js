@@ -116,6 +116,12 @@ QUnit.module('account signup', function() {
 						if (!login) {
 							login = true;
 							assert.ok(responseCode === "0", "login successful");
+							const capClear = auth.checkSignature(fields[1]);
+							const capFields = util.wireUnpack7Bit(capClear.buffer, 8);
+							assert.ok(capFields.length === 3, "token has 3 fields");
+							/* TODO: check expires (pre 8 bytes of token) */
+							assert.ok(util.keysEqual(capFields[0], kp.publicKey), "token key matches");
+							assert.strictEqual(sodium.to_string(capFields[1]), "service", "service matches");
 							auth.close();
 							done();
 						}
