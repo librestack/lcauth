@@ -69,11 +69,6 @@ class Auth {
 		console.log("auth.close()");
 		this.sock["auth"].close();
 		this.sock["repl"].close();
-		/*
-		for (let i = 0, ii = this.sock.len; i < ii; i++) {
-			this.sock[i].close();
-		}
-		*/
 	}
 
 	decodePacket(payload, offset) {
