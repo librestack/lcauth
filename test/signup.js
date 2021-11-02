@@ -117,6 +117,7 @@ QUnit.module('account signup', function() {
 							login = true;
 							assert.ok(responseCode === "0", "login successful");
 							const capClear = auth.checkSignature(fields[1]);
+							assert.ok(capClear, "signature checked");
 							const capFields = util.wireUnpack7Bit(capClear.buffer, 8);
 							assert.ok(capFields.length === 3, "token has 3 fields");
 							/* TODO: check expires (pre 8 bytes of token) */
