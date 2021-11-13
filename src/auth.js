@@ -1,6 +1,7 @@
 class Auth {
-	constructor(keypair, replyCallback) {
+	constructor(lctx, authComboKeyHex, keypair, replyCallback) {
 		console.log("auth class constructor");
+		this.lctx = lctx;
 		this.replyCallback = replyCallback;
 		this.sock = [];
 		this.chan = [];
@@ -8,7 +9,6 @@ class Auth {
 		this.authKey = new Key(authComboKeyHex);
 		this.keypair = (keypair !== undefined) ? keypair : sodium.crypto_box_keypair();
 		this.ready = new Promise((resolve, reject) => {
-			this.lctx = new LIBRECAST.Context();
 			this.lctx.onconnect.then(() => {
 				this.sock["auth"] = new LIBRECAST.Socket(this.lctx);
 				this.sock["repl"] = new LIBRECAST.Socket(this.lctx);

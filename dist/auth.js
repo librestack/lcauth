@@ -20,10 +20,10 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-const authComboKeyHex = "5c146391d0bf788c19ae63ff5cd64a2b23f2c9835edd8197a93bd1bab12e2a7d3a787c20db2c95e462340cea6e6584f7c5bf1a25b40682fcaa1f45fb40cce1f8";
 class Auth {
-	constructor(keypair, replyCallback) {
+	constructor(lctx, authComboKeyHex, keypair, replyCallback) {
 		console.log("auth class constructor");
+		this.lctx = lctx;
 		this.replyCallback = replyCallback;
 		this.sock = [];
 		this.chan = [];
@@ -31,7 +31,6 @@ class Auth {
 		this.authKey = new Key(authComboKeyHex);
 		this.keypair = (keypair !== undefined) ? keypair : sodium.crypto_box_keypair();
 		this.ready = new Promise((resolve, reject) => {
-			this.lctx = new LIBRECAST.Context();
 			this.lctx.onconnect.then(() => {
 				this.sock["auth"] = new LIBRECAST.Socket(this.lctx);
 				this.sock["repl"] = new LIBRECAST.Socket(this.lctx);

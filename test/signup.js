@@ -1,15 +1,18 @@
+const authComboKeyHex = "5c146391d0bf788c19ae63ff5cd64a2b23f2c9835edd8197a93bd1bab12e2a7d3a787c20db2c95e462340cea6e6584f7c5bf1a25b40682fcaa1f45fb40cce1f8";
 QUnit.module('account signup', function() {
+	const lctx = new LIBRECAST.Context();
 	QUnit.test('new user account - bad email address', function(assert) {
 		console.log("== TEST: new user account - bad email address");
 		assert.timeout(2000);
 		const done = assert.async(3);
-		sodium.ready.then(function () {
+		Promise.all([sodium.ready, lctx.onconnect])
+		.then(function () {
 			assert.ok(true, "sodium ready");
 			const kp = sodium.crypto_box_keypair();
 			const localpart = sodium.to_hex(sodium.randombytes_buf(16));
 			const invalidEmail = "@live.librecast.net";
 			const password = sodium.to_hex(sodium.randombytes_buf(16));
-			const auth = new Auth(kp, (opcode, flags, fields, pre) => {
+			const auth = new Auth(lctx, authComboKeyHex, kp, (opcode, flags, fields, pre) => {
 				const view = new DataView(pre);
 				const responseCode = view.getUint8(0).toString();
 				assert.ok(opcode === 0x1, "opcode=" + opcode);
@@ -29,11 +32,12 @@ QUnit.module('account signup', function() {
 		console.log("== TEST: set password - bad token");
 		assert.timeout(2000);
 		const done = assert.async(1);
-		sodium.ready.then(function () {
+		Promise.all([sodium.ready, lctx.onconnect])
+		.then(function () {
 			const kp = sodium.crypto_box_keypair();
 			const token = sodium.to_hex(sodium.randombytes_buf(16));
 			const password = sodium.to_hex(sodium.randombytes_buf(16));
-			const auth = new Auth(kp, (opcode, flags, fields, pre) => {
+			const auth = new Auth(lctx, authComboKeyHex, kp, (opcode, flags, fields, pre) => {
 				const view = new DataView(pre);
 				const responseCode = view.getUint8(0).toString();
 				assert.ok(opcode === 0x4, "opcode=" + opcode);
@@ -51,12 +55,13 @@ QUnit.module('account signup', function() {
 		console.log("== TEST: login - bad login");
 		assert.timeout(2000);
 		const done = assert.async(1);
-		sodium.ready.then(function () {
+		Promise.all([sodium.ready, lctx.onconnect])
+		.then(function () {
 			const kp = sodium.crypto_box_keypair();
 			const localpart = sodium.to_hex(sodium.randombytes_buf(16));
 			const email = localpart + "@live.librecast.net";
 			const password = sodium.to_hex(sodium.randombytes_buf(16));
-			const auth = new Auth(kp, (opcode, flags, fields, pre) => {
+			const auth = new Auth(lctx, authComboKeyHex, kp, (opcode, flags, fields, pre) => {
 				const view = new DataView(pre);
 				const responseCode = view.getUint8(0).toString();
 				assert.ok(opcode === 0x8, "opcode=" + opcode);
@@ -78,7 +83,8 @@ QUnit.module('account signup', function() {
 		let signup = false;
 		let passet = false;
 		let login = false;
-		sodium.ready.then(function () {
+		Promise.all([sodium.ready, lctx.onconnect])
+		.then(function () {
 			const kp = sodium.crypto_box_keypair();
 			const localpart = sodium.to_hex(sodium.randombytes_buf(32));
 			const email = localpart + "@live.librecast.net";
@@ -86,7 +92,7 @@ QUnit.module('account signup', function() {
 			const seed = kp.publicKey.slice(0, sodium.randombytes_SEEDBYTES);
 			const token = sodium.to_hex(sodium.randombytes_buf_deterministic(sodium.crypto_box_PUBLICKEYBYTES, seed));
 			const hextoken = sodium.to_hex(token);
-			const auth = new Auth(kp, (opcode, flags, fields, pre) => {
+			const auth = new Auth(lctx, authComboKeyHex, kp, (opcode, flags, fields, pre) => {
 				const view = new DataView(pre)
 				const responseCode = view.getUint8(0).toString();
 				console.log("opcode: " + opcode);
