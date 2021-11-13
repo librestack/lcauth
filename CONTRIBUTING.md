@@ -25,6 +25,4 @@ This is a small project, so I don't want to get bogged down in too much formalit
 
 ## Coding Style
 
-This project uses the Linux kernel coding style:
-
-  See https://www.kernel.org/doc/html/latest/process/coding-style.html
+Patches should match the coding style of the file they are changing and the project in general. Try to make it look like the original author wrote your code.
